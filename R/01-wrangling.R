@@ -2,18 +2,18 @@
 # Wrangling Reference Manager Data From Mendeley and Papers
 # ==============================================================================
 
-# Loading Packages 
+# Loading Packages =============================================================
 library(here)
 library(bib2df)
 library(feather)
 library(janitor)
 library(tidyverse)
 
-# Setting Constants
+# Setting Constants ============================================================
 RAW_DATA <- here("data", "raw")
 ACTIVE_DATA <- here("data", "active")
 
-# Loading Data Sets
+# Loading Data Sets ============================================================
 papers <- read_csv(here(RAW_DATA, "papers.csv")) %>%
   clean_names() %>%
   filter(!is.na(doi) | !is.na(pmid) | !is.na(pmcid),
@@ -37,19 +37,19 @@ mendeley <- bib2df(here(RAW_DATA, "/mendeley.bib")) %>%
          date_added = date(NA),
          reference_manager = "mendeley")
 
-# Bindings Both Data Sets
+# Bindings Both Data Sets ======================================================
 articles <- rbind(papers, mendeley) %>%
   # From duplicates, select the row from Papers
   filter(!duplicated(doi, fromLast = TRUE)) %>%
   filter(!duplicated(pmid), fromLast = TRUE)
 
-# Seperating into...
+# Seperating Data Sets =========================================================
 # . Metadata: Descriptive information about an article
 # . Abstracts: The focus of the analysis
 # . Data sets are related by their `id` column
 metadata <- articles %>% select(-abstract)
 abstracts <- articles %>% select(id, abstract)
 
-# Saving
+# Saving =======================================================================
 write_feather(metadata, here(ACTIVE_DATA, "metadata.feather"))
 write_feather(abstracts, here(ACTIVE_DATA, "abstracts.feather"))
