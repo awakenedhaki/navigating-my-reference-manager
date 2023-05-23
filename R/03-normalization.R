@@ -19,6 +19,10 @@ TERM_CORRECTION <- tribble(~regex,                ~term,
                            "high.grade|hgs(o)?c",   "hgsc",
                            "sb(o)?t(s)?",           "sbt",
                            "th\\d|treg",            "t-cell",
+                           "mutat",                 "mutation",
+                           "taxon",                 "taxonomy",
+                           "transcript(?:ome)?",    "transcript",
+                           "translat",              "translation",
                            "hsv",                   "hsv",
                            "genom",                 "genome",
                            "transcriptom",          "transcriptome",
@@ -28,9 +32,15 @@ TERM_CORRECTION <- tribble(~regex,                ~term,
                            "stromal",               "stroma",
                            "metastatic",            "metastasis",
                            "herpe",                 "herpes",
-                           "\\(",                   "",
+                           "^vivo",                 "vivo",
+                           "tum[ou]r",              "tumor",
+                           "^onco",                 "onco",
+                           "^vascular(?:.*)?",      "vascular",
+                           "mechano",               "mechano",
+                           "\\(|non-",              "",
                            # Collapsing Gene/Protein names
                            "^fap",                  "fap",
+                           "^pdgf.*",               "pdgf",
                            "^smad.*",               "smad",
                            "^brca.*",               "brca",
                            "^wnt.*",                "wnt",
@@ -39,6 +49,7 @@ TERM_CORRECTION <- tribble(~regex,                ~term,
                            "^erk.*",                "erk",
                            "^[kn]ras.*",            "ras",
                            "^yap1",                 "yap",
+                           "^igf.*",                "igf",
                            "^mmp[^i]",              "mmp",
                            "rsf.1",                 "rsf1",
                            "pd.1",                  "pd1",
@@ -72,11 +83,11 @@ TERM_CORRECTION <- tribble(~regex,                ~term,
                            "society|center|iii",    "__remove",
                            "discovery|bhw|nhbs",    "__remove")
 
-# Tokenization =================================================================
+# Tokenization & Normalization =================================================
 spacy_initialize(model = "en_core_web_lg")
 
 rm_pos <- c("PART", "AUX", "SCONJ")
-tokenized_abstracts <- CORPUS %>%
+normalized_tokens <- CORPUS %>%
   pull(abstract, id) %>%
   spacy_parse(pos = TRUE, tags = FALSE, lemma = TRUE, 
               entity = FALSE, nounphrase = FALSE,
@@ -84,18 +95,14 @@ tokenized_abstracts <- CORPUS %>%
               multithreaded = TRUE) %>%
   as_tibble() %>%
   mutate(token = str_to_lower(token), lemma = str_to_lower(lemma)) %>%
-  rename(id = doc_id)
-
-spacy_finalize()
-
-# Normalization ================================================================
-count_matrix_long <- tokenized_abstracts %>%
+  rename(id = doc_id) %>%
   anti_join(stop_words, by = c("lemma" = "word")) %>%
   filter(!is_stop, nchar(lemma) > 2, !str_detect(lemma, "\\d")) %>%
   regex_left_join(TERM_CORRECTION, by = c("lemma" = "regex")) %>%
   mutate(term = ifelse(is.na(term), lemma, term)) %>%
-  filter(term != "__remove") %>%
-  count(id, term)
+  filter(term != "__remove")
+  
+spacy_finalize()
 
 # Saving Count Matrix ==========================================================
-write_feather(count_matrix_long, here(ACTIVE_DATA, "counts_matrix.feather"))
+write_feather(normalized_tokens, here(ACTIVE_DATA, "normalized_tokens.feather"))
