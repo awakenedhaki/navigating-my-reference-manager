@@ -2,30 +2,30 @@
 # Cleaning: Removing "Low-Quality" Abstracts
 # ==============================================================================
 
-# Loading Packages
+# Loading Packages ============================================================= 
 library(here)
 library(glue)
 library(scales)
 library(feather)
 library(tidyverse)
 
-# Changing ggplot2 Defaults
+# Changing ggplot2 Defaults ====================================================
 update_geom_defaults("bar", list(color = "black", fill = "salmon"))
 update_geom_defaults("boxplot", list(fill = c("skyblue", "salmon")))
 theme_set(theme_minimal())
 
-# Constants
+# Constants ====================================================================
 ACTIVE_DATA <- here("data", "active")
 LOWER_THRESHOLD <- 50
 UPPER_THRESHOLD <- 800
 
-# Loading Data
+# Loading Data =================================================================
 metadata <- read_feather(here(ACTIVE_DATA, "metadata.feather")) %>%
   mutate(reference_manager = str_to_title(reference_manager),
-         journal = str_to_lower(journal))
+         journal = str_to_title(journal))
 abstracts <- read_feather(here(ACTIVE_DATA, "abstracts.feather"))
 
-# Counting Words in Abstracts
+# Counting Words in Abstracts ==================================================
 abstracts_to_clean <- abstracts %>%
   mutate(n_words = str_count(abstract, pattern = "\\w+")) %>%
   right_join(metadata, by = "id") %>%
@@ -57,7 +57,7 @@ abstracts_to_clean %>%
 
 # . Number of Words Distribution by Publishing Journal
 abstracts_to_clean %>%
-  mutate(journal = fct_lump(journal, n = 11, w = n_words)) %>% 
+  mutate(journal = fct_lump(journal, n = 19, w = n_words)) %>% 
   mutate(n = n(), journal = glue("{journal} (n = {n})"), .by = "journal") %>%
   mutate(journal = fct_reorder(journal, n)) %>%
   ggplot(aes(x = reference_manager, y = n_words, fill = journal)) +
@@ -82,3 +82,11 @@ abstracts_to_clean %>%
   mutate(median_words = median(n_words), .by = "journal") %>%
   distinct(journal, median_words) %>%
   arrange(median_words)
+
+# Removing Abstracts ===========================================================
+cleaned_abstracts <- abstracts %>%
+  filter(id %in% (abstracts_to_clean %>%
+           filter(LOWER_THRESHOLD <= n_words, n_words <= UPPER_THRESHOLD) %>%
+           pull(id)))
+
+write_feather(cleaned_abstracts, here(ACTIVE_DATA, "cleaned_abstracts.feather"))
