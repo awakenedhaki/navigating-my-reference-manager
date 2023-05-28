@@ -1,5 +1,7 @@
 # ==============================================================================
 # Feature Engineering
+# 
+# . Removing low-count terms, and calculating TF-IDF.
 # ==============================================================================
 
 # Loading Packages =============================================================
@@ -16,15 +18,27 @@ update_geom_defaults("boxplot", list(fill = c("skyblue", "salmon")))
 theme_set(theme_minimal())
 
 # Constants ====================================================================
-ACTIVE_DATA <- here("data", "active")
+CLEAN_DATA <- here("data", 
+                   "active", 
+                   "clean", 
+                   "cleaned_abstracts_lower-50_upper-825.feather")
+OUTDIR <- here("data", "active", "feature_engineering")
+TERM_COUNT_LOWER_THRESHOLD <- 2
+TF_IDF_LOWER_THRESHOLD <- 0.075
+
+LABEL_TF_IDF_LOWER_THRESHOLD <- as.character(TF_IDF_LOWER_THRESHOLD) %>%
+  str_replace("\\.", "-")
+FILE_SUFFIX <- glue("{TERM_COUNT_LOWER_THRESHOLD}_{LABEL_TF_IDF_LOWER_THRESHOLD}")
+FILENAME <- glue("tf_idf_matrix_long_{FILE_SUFFIX}.feather")
 
 # Loading Data Sets ============================================================
-tokens <- read_feather(here(ACTIVE_DATA, "normalized_tokens.feather"))
+tokens <- read_feather(CLEAN_DATA)
 
+# Filtering Low Count Terms ====================================================
 token_corpus_counts <- tokens %>%
   select(id, term) %>%
   add_count(term) %>%
-  filter(n > 1)
+  filter(n > TERM_COUNT_LOWER_THRESHOLD)
 
 # Visualization ================================================================
 token_corpus_counts %>%
@@ -45,7 +59,7 @@ token_corpus_counts %>%
 tf_idf_matrix_long <- tokens %>%
   count(id, term) %>%
   bind_tf_idf(term, id, n) %>%
-  filter(tf_idf > 0.05)
+  filter(tf_idf > TF_IDF_LOWER_THRESHOLD)
 
 # Saving TF-IDF Matrix =========================================================
-write_feather(tf_idf_matrix_long, here(ACTIVE_DATA, "tf_idf_matrix_long.feather"))
+write_feather(tf_idf_matrix_long, here(OUTDIR, FILENAME))
