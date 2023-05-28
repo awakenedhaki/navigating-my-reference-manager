@@ -1,5 +1,8 @@
 # ==============================================================================
 # Wrangling Reference Manager Data From Mendeley and Papers
+# 
+# . Reading, cleaning, and binding my Mendeley and Papers reference manager 
+# . libraries. The libraries are split into metadata and abstract tibbles.
 # ==============================================================================
 
 # Loading Packages =============================================================
