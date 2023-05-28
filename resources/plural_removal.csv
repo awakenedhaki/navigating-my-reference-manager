@@ -1,0 +1,10 @@
+regex,term
+^caf(s)?,caf
+author(.)?s,author
+lncrnas,lncrna
+mi(cro)?rnas,mirna
+mrnas,mrna
+mpscs,mpsc
+mscs,msc
+umis,umi
+bioinformatics,bioinformatic
