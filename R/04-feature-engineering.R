@@ -25,7 +25,7 @@ CLEAN_DATA <- here("data",
                    "cleaned_abstracts_lower-50_upper-825.feather")
 OUTDIR <- here("data", "active", "feature_engineering")
 TERM_COUNT_LOWER_THRESHOLD <- 1
-TF_IDF_LOWER_THRESHOLD <- 0.05
+TF_IDF_LOWER_THRESHOLD <- 0.1
 
 LABEL_TF_IDF_LOWER_THRESHOLD <- as.character(TF_IDF_LOWER_THRESHOLD) %>%
   str_replace("\\.", "-")
