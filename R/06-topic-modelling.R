@@ -23,7 +23,7 @@ DTM_PATH <- here("data",
 
 ETA <- 5
 ALPHA <- 0.1
-N_TOPICS <- 5k
+N_TOPICS <- 5
 ITERATIONS <- 500
 
 # Loading Data =================================================================
