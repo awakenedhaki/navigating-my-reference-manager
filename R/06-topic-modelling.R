@@ -16,17 +16,21 @@ update_geom_defaults("point", list(size = 3, color = "salmon"))
 theme_set(theme_minimal())
 
 # Constants ====================================================================
-DTM_PATH <- here("data", 
-                 "active", 
+ACTIVE_DATA <- here("data", "active")
+DTM_PATH <- here(ACTIVE_DATA, 
                  "feature_engineering", 
-                 "tf_idf_matrix_long_2_0-075.feather")
+                 "tf_idf_matrix_long_1_0-1.feather")
+# 1_0-075
+# ETA = 5; ALPHA = 0.01, N_TOPICS = 5
 
-ETA <- 5
-ALPHA <- 0.1
-N_TOPICS <- 5
+ETA <- 0.5
+ALPHA <- 0.3
+N_TOPICS <- 10
 ITERATIONS <- 500
 
 # Loading Data =================================================================
+metadata <- read_feather(here(ACTIVE_DATA, "metadata.feather"))
+
 dtm <- read_feather(DTM_PATH) %>%
   cast_sparse(id, term, n)
 
@@ -44,6 +48,7 @@ topic_document_probs <- topics %>%
   tidy(matrix = "theta")
 
 # Visualizations ===============================================================
+topic_labels <- setNames(str_c("Topic: ", 1:N_TOPICS), 1:N_TOPICS)
 topic_token_probs %>%
   slice_max(order_by = beta, n = 15, by = topic) %>%
   mutate(topic = factor(topic),
@@ -52,7 +57,9 @@ topic_token_probs %>%
     geom_col() +
     scale_x_reordered() +
     coord_flip() +
-    facet_wrap(~topic, scales = "free_y")
+    facet_wrap(~topic, scales = "free_y", labeller = as_labeller(topic_labels)) +
+    theme(legend.position = "none", 
+          panel.border = element_rect(color = "black", fill = NA))
 
 topic_document_probs %>%
   filter(document == "10") %>%
