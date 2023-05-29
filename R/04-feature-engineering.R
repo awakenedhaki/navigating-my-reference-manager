@@ -1,11 +1,12 @@
 # ==============================================================================
 # Feature Engineering
 # 
-# . Removing low-count terms, and calculating TF-IDF.
+# . Calculating TF-IDF.
 # ==============================================================================
 
 # Loading Packages =============================================================
 library(here)
+library(glue)
 library(scales)
 library(ggforce)
 library(feather)
@@ -23,8 +24,8 @@ CLEAN_DATA <- here("data",
                    "clean", 
                    "cleaned_abstracts_lower-50_upper-825.feather")
 OUTDIR <- here("data", "active", "feature_engineering")
-TERM_COUNT_LOWER_THRESHOLD <- 2
-TF_IDF_LOWER_THRESHOLD <- 0.075
+TERM_COUNT_LOWER_THRESHOLD <- 1
+TF_IDF_LOWER_THRESHOLD <- 0.05
 
 LABEL_TF_IDF_LOWER_THRESHOLD <- as.character(TF_IDF_LOWER_THRESHOLD) %>%
   str_replace("\\.", "-")
