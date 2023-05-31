@@ -15,3 +15,5 @@ licensee|pubmed|clin$,__remove
 society|center|iii,__remove
 discovery|bhw|nhbs,__remove
 asgal|ntedit,__remove
+émis,__remove
+common.*,__remove
