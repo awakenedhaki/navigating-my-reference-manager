@@ -24,7 +24,7 @@ CLEAN_DATA <- here("data",
                    "clean", 
                    "cleaned_abstracts_lower-50_upper-825.feather")
 OUTDIR <- here("data", "active", "feature_engineering")
-TERM_COUNT_LOWER_THRESHOLD <- 1
+TERM_COUNT_LOWER_THRESHOLD <- 5
 TF_IDF_LOWER_THRESHOLD <- 0.1
 
 LABEL_TF_IDF_LOWER_THRESHOLD <- as.character(TF_IDF_LOWER_THRESHOLD) %>%
@@ -43,6 +43,7 @@ token_corpus_counts <- tokens %>%
 
 # Visualization ================================================================
 token_corpus_counts %>%
+  distinct(term, n) %>%
   arrange(desc(n)) %>%
   head()
 
@@ -52,9 +53,10 @@ token_corpus_counts %>%
   mutate(term = str_to_title(term),
          term = fct_reorder(term, n)) %>%
   ggplot(aes(x = term, y = n)) +
-    geom_col() + 
-    labs(x = "Word Count", y = "Term") +
-    scale_y_continuous(labels = label_comma())
+    geom_col() +
+    scale_y_continuous(labels = label_comma()) +
+    coord_flip() +
+    labs(y = "Word Count", x = "Term")
 
 # TF-IDF =======================================================================
 tf_idf_matrix_long <- tokens %>%

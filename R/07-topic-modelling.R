@@ -19,13 +19,11 @@ theme_set(theme_minimal())
 ACTIVE_DATA <- here("data", "active")
 DTM_PATH <- here(ACTIVE_DATA, 
                  "feature_engineering", 
-                 "tf_idf_matrix_long_1_0-1.feather")
-# 1_0-075
-# ETA = 5; ALPHA = 0.01, N_TOPICS = 5
+                 "tf_idf_matrix_long_3_0-05.feather")
 
-ETA <- 0.5
-ALPHA <- 0.3
-N_TOPICS <- 10
+ETA <- 0.75
+ALPHA <- 0.25
+N_TOPICS <- 12
 ITERATIONS <- 500
 
 # Loading Data =================================================================
