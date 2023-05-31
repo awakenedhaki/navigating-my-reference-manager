@@ -33,7 +33,7 @@ extract_keywords <- function(tbl, group = NULL, n_keywords = 10) {
 select_from <- function(tbl, group, from, n = 12, random = FALSE, seed = NULL) {
   if (random) {
     set.seed(seed)
-    slicer <- partial(sample_n, size = n)
+    slicer <- partial(slice_sample, n = n)
   } else {
     slicer <- partial(slice_max, order_by = group_count, n = n, with_ties = FALSE)
   }
@@ -50,8 +50,8 @@ keyword_barplot <- function(tbl) {
   ggplot(data = tbl, aes(x = term, y = aggregated_tf_idf)) +
     geom_col() +
     scale_x_reordered() +
-    coord_flip() +
-    labs(x = "Aggregated TF-IDF", y = "Keyword")
+    labs(x = "Keyword", y = "Aggregated TF-IDF") +
+    coord_flip()
 }
 
 extract_authors <- function(tbl) {
