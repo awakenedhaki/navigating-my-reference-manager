@@ -69,12 +69,12 @@ tf_idf_matrix_long <- read_feather(here(TFIDF, "tf_idf_matrix_long_3_0-05.feathe
   select(-c(n, tf, idf))
 
 # Keyword Analysis =============================================================
-# . Sum of TF-IDF
+# . Global Keywords
 tf_idf_matrix_long %>%
   extract_keywords(n_keywords = 25) %>%
   keyword_barplot()
 
-# . Sum of TF-IDF by Journal
+# . Journal Keywords
 tf_idf_matrix_long %>%
   extract_keywords(journal, n_keywords = 10) %>%
   select_from(journal, from = tf_idf_matrix_long["journal"], 
@@ -82,12 +82,10 @@ tf_idf_matrix_long %>%
   keyword_barplot() +
     facet_wrap(~journal, scales = "free_y")
 
-# . Sum of TF-IDF by Author
+# . Author Keywords
 tf_idf_matrix_long %>%
   extract_authors() %>%
   extract_keywords(author) %>%
   select_from(author, from = extract_authors(metadata)) %>%
   keyword_barplot() +
     facet_wrap(~author, scales = "free_y")
-
-
