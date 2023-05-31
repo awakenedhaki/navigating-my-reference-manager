@@ -14,6 +14,8 @@ library(tidyverse)
 update_geom_defaults("bar", list(color = "black", fill = "salmon"))
 update_geom_defaults("point", list(size = 3, color = "salmon"))
 theme_set(theme_minimal())
+theme_update(legend.position = "none", 
+             panel.border = element_rect(color = "black", fill = NA))
 
 # Constants ====================================================================
 ACTIVE_DATA <- here("data", "active")
@@ -55,9 +57,7 @@ topic_token_probs %>%
     geom_col() +
     scale_x_reordered() +
     coord_flip() +
-    facet_wrap(~topic, scales = "free_y", labeller = as_labeller(topic_labels)) +
-    theme(legend.position = "none", 
-          panel.border = element_rect(color = "black", fill = NA))
+    facet_wrap(~topic, scales = "free_y", labeller = as_labeller(topic_labels))
 
 topic_document_probs %>%
   filter(document == "10") %>%
