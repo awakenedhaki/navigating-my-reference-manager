@@ -32,11 +32,12 @@ plot_graph <- function(graph, layout) {
       geom_node_point(color = "black", size = 4) +
       geom_node_point() +
       geom_node_text(aes(label = name), repel = TRUE, family = "Roboto") +
-      theme_void()
+      theme_void() +
+      theme(legend.position = "none")
 }
 
 # Loading Data Sets ============================================================
-tf_idf_matrix <- read_feather(here(DTM_PATH, "tf_idf_matrix_long_1_0-05.feather"))
+tf_idf_matrix <- read_feather(here(DTM_PATH, "tf_idf_matrix_long_1_2_0-05.feather"))
 
 # Term Correlation =============================================================
 # . Correlation (Adjacency) Matrix
@@ -46,7 +47,8 @@ correlation_matrix <-  tf_idf_matrix %>%
 
 # . Correlation Graph
 correlation_graph <- correlation_matrix %>%
-  slice_max(order_by = correlation, n = 1000) %>%
+  filter(correlation > 0) %>%
+  slice_max(order_by = correlation, n = 1500) %>%
   graph_from_data_frame()
 
 vertices <- V(correlation_graph)
@@ -61,7 +63,7 @@ graph_component_sizes <- graph_components$csize
 # . Query key words
 correlation_matrix %>%
   filter(item1 %in% c("machine", "lgsc", "hgsc", "scrna")) %>%
-  slice_max(order_by = correlation, n = 10, by = item1, with_ties = FALSE) %>%
+  slice_max(order_by = abs(correlation), n = 20, by = item1, with_ties = FALSE) %>%
   mutate(item2 = reorder_within(item2, correlation, item1)) %>%
   ggplot(aes(x = item2, y = correlation, fill = item1)) +
     geom_col() +
