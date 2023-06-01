@@ -24,12 +24,13 @@ CLEAN_DATA <- here("data",
                    "clean", 
                    "cleaned_abstracts_lower-50_upper-825.feather")
 OUTDIR <- here("data", "active", "feature_engineering")
-TERM_COUNT_LOWER_THRESHOLD <- 5
-TF_IDF_LOWER_THRESHOLD <- 0.1
+TERM_COUNT_LOWER_THRESHOLD <- 1
+IDF_LOWER_THRESHOLD <- round(log(10))
+TF_IDF_LOWER_THRESHOLD <- 0.05
 
 LABEL_TF_IDF_LOWER_THRESHOLD <- as.character(TF_IDF_LOWER_THRESHOLD) %>%
   str_replace("\\.", "-")
-FILE_SUFFIX <- glue("{TERM_COUNT_LOWER_THRESHOLD}_{LABEL_TF_IDF_LOWER_THRESHOLD}")
+FILE_SUFFIX <- glue("{TERM_COUNT_LOWER_THRESHOLD}_{IDF_LOWER_THRESHOLD}_{LABEL_TF_IDF_LOWER_THRESHOLD}")
 FILENAME <- glue("tf_idf_matrix_long_{FILE_SUFFIX}.feather")
 
 # Loading Data Sets ============================================================
@@ -62,7 +63,8 @@ token_corpus_counts %>%
 tf_idf_matrix_long <- tokens %>%
   count(id, term) %>%
   bind_tf_idf(term, id, n) %>%
-  filter(tf_idf > TF_IDF_LOWER_THRESHOLD)
+  filter(tf_idf > TF_IDF_LOWER_THRESHOLD,
+         idf > IDF_LOWER_THRESHOLD)
 
 # Saving TF-IDF Matrix =========================================================
 write_feather(tf_idf_matrix_long, here(OUTDIR, FILENAME))
