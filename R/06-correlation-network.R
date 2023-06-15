@@ -48,7 +48,7 @@ correlation_matrix <-  tf_idf_matrix %>%
 # . Correlation Graph
 correlation_graph <- correlation_matrix %>%
   filter(correlation > 0) %>%
-  slice_max(order_by = correlation, n = 1500) %>%
+  slice_max(order_by = correlation, n = 1750) %>%
   graph_from_data_frame()
 
 vertices <- V(correlation_graph)

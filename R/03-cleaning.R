@@ -19,7 +19,7 @@ theme_set(theme_minimal())
 # Constants ====================================================================
 ACTIVE_DATA <- here("data", "active")
 OUTDIR <- here(ACTIVE_DATA, "clean")
-LOWER_THRESHOLD <- 75
+LOWER_THRESHOLD <- 50
 UPPER_THRESHOLD <- 825
 
 THRESHOLDS <- glue("lower-{LOWER_THRESHOLD}_upper-{UPPER_THRESHOLD}")
@@ -96,4 +96,4 @@ cleaned_abstracts <- normalized_tokens %>%
            pull(id)))
 
 write_feather(cleaned_abstracts, 
-              here(OUTDIR, glue("cleaned_abstracts_{THRESHOLDS}.feather",)))
+              here(OUTDIR, glue("cleaned_abstracts_{THRESHOLDS}.feather")))

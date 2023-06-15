@@ -24,7 +24,7 @@ CLEAN_DATA <- here("data",
                    "clean", 
                    "cleaned_abstracts_lower-50_upper-825.feather")
 OUTDIR <- here("data", "active", "feature_engineering")
-TERM_COUNT_LOWER_THRESHOLD <- 1
+TERM_COUNT_LOWER_THRESHOLD <- 3
 IDF_LOWER_THRESHOLD <- round(log(10))
 TF_IDF_LOWER_THRESHOLD <- 0.05
 

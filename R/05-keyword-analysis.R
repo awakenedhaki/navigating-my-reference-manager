@@ -64,7 +64,7 @@ extract_authors <- function(tbl) {
 metadata <- read_feather(here(ACTIVE_DATA, "metadata.feather")) %>%
   select(id, journal, publication_year, author, reference_manager)
 
-tf_idf_matrix_long <- read_feather(here(TFIDF, "tf_idf_matrix_long_3_0-05.feather")) %>%
+tf_idf_matrix_long <- read_feather(here(TFIDF, "tf_idf_matrix_long_3_2_0-05.feather")) %>%
   left_join(metadata, by = "id") %>%
   select(-c(n, tf, idf))
 
@@ -85,7 +85,7 @@ tf_idf_matrix_long %>%
 # . Author Keywords
 tf_idf_matrix_long %>%
   extract_authors() %>%
-  extract_keywords(author) %>%
   select_from(author, from = extract_authors(metadata)) %>%
+  extract_keywords(author) %>%
   keyword_barplot() +
     facet_wrap(~author, scales = "free_y")
