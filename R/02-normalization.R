@@ -15,20 +15,22 @@ library(tidyverse)
 # Constants ====================================================================
 ACTIVE_DATA <- here("data", "active")
 RESOURCES <- here("resources")
-CORPUS <- read_feather(here(ACTIVE_DATA, "abstracts.feather"))
+
+# Loading Data =================================================================
+abstracts <- read_feather(here(ACTIVE_DATA, "abstracts.feather"))
 
 # Loading Resources ============================================================
-TERM_CORRECTIONS <- rbind(read_csv(here(RESOURCES, "gene_name_corrections.csv")),
+term_corrections <- rbind(read_csv(here(RESOURCES, "gene_name_corrections.csv")),
                           read_csv(here(RESOURCES, "collapsing_tokens.csv")),
                           read_csv(here(RESOURCES, "plural_removal.csv")))
 
-REMOVE_WORDS <- read_csv(here(RESOURCES, "remove_words.csv"))
+remove_words <- read_csv(here(RESOURCES, "remove_words.csv"))
 
 # Tokenization & Normalization =================================================
 spacy_initialize(model = "en_core_web_lg")
 
 rm_pos <- c("PART", "AUX", "SCONJ")
-normalized_tokens <- CORPUS %>%
+normalized_tokens <- abstracts %>%
   pull(abstract, id) %>%
   spacy_parse(pos = TRUE, tags = FALSE, lemma = TRUE, 
               entity = FALSE, nounphrase = FALSE,
@@ -39,9 +41,9 @@ normalized_tokens <- CORPUS %>%
   rename(id = doc_id) %>%
   anti_join(stop_words, by = c("lemma" = "word")) %>%
   filter(!is_stop, nchar(lemma) > 2, !str_detect(lemma, "\\d")) %>%
-  regex_left_join(TERM_CORRECTION, by = c("lemma" = "regex")) %>%
+  regex_left_join(term_corrections, by = c("lemma" = "regex")) %>%
   mutate(term = ifelse(is.na(term), lemma, term)) %>%
-  regex_anti_join(REMOVE_WORDS, by = c("lemma" = "regex"))
+  regex_anti_join(remove_words, by = c("lemma" = "regex"))
   
 spacy_finalize()
 
