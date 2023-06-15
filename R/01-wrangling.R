@@ -7,6 +7,7 @@
 
 # Loading Packages =============================================================
 library(here)
+library(uuid)
 library(bib2df)
 library(feather)
 library(janitor)
@@ -19,32 +20,34 @@ ACTIVE_DATA <- here("data", "active")
 # Loading Data Sets ============================================================
 papers <- read_csv(here(RAW_DATA, "papers.csv")) %>%
   clean_names() %>%
-  filter(!is.na(doi) | !is.na(pmid) | !is.na(pmcid),
-         !is.na(journal),
-         !is.na(abstract)) %>%
-  select(id = item_id_read_only, 
-         date_added = created_read_only, 
-         publication_year = year,
-         title,  author,  journal,  abstract, doi, pmid) %>%
-  mutate(date_added = ymd_hms(date_added),  reference_manager = "papers")
+  select(date_added = created_read_only, publication_year = year,
+         title,  author,  journal,  abstract, doi, pmid, pmcid) %>%
+  mutate(date_added = ymd_hms(date_added), reference_manager = "papers")
 
 mendeley <- bib2df(here(RAW_DATA, "/mendeley.bib")) %>%
   clean_names() %>%
-  filter(!is.na(doi) | !is.na(pmid),
-         !is.na(journal),
-         !is.na(abstract)) %>%
   select(publication_year = year, title, abstract, author, journal, doi, pmid) %>%
   mutate(id = row_number(), .before = publication_year) %>%
   mutate(author = str_flatten_comma(unlist(author)), .by = "id") %>%
-  mutate(publication_year = as.numeric(publication_year), 
-         date_added = date(NA),
-         reference_manager = "mendeley")
+  select(-id) %>%
+  mutate(publication_year = as.numeric(publication_year), date_added = date(NA),
+         pmcid = NA, reference_manager = "mendeley")
+
+papers
+mendeley
 
 # Bindings Both Data Sets ======================================================
 articles <- rbind(papers, mendeley) %>%
-  # From duplicates, select the row from Papers
-  filter(!duplicated(doi, fromLast = TRUE)) %>%
-  filter(!duplicated(pmid), fromLast = TRUE)
+  mutate(missing_journal = is.na(journal),
+         missing_abstract = is.na(abstract)) %>%
+  mutate(across(.cols = c(pmcid, pmid, doi), 
+                .fns = ~duplicated(.x, fromLast = TRUE, incomparables = NA),
+                .names = "duplicated_{.col}")) %>%
+  filter(!missing_abstract, !missing_journal,
+         !(duplicated_pmcid | duplicated_pmid | duplicated_doi)) %>%
+  select(-c(missing_abstract, 
+            duplicated_pmcid, duplicated_pmid, duplicated_doi)) %>%
+  mutate(id = UUIDgenerate(n = nrow(.)), .before = date_added)
 
 # Seperating Data Sets =========================================================
 # . Metadata: Descriptive information about an article
