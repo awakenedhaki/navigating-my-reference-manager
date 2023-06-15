@@ -7,6 +7,7 @@ library(here)
 library(broom)
 library(scales)
 library(feather)
+library(viridis)
 library(tidylda)
 library(tidytext)
 library(tidyverse)
@@ -78,8 +79,9 @@ topic_document_probs %>%
                 size = 3,
                 color = "black") +
       scale_fill_gradient2(low = "#381D2A", mid = "#AABD8C", high = "#E9E3B4",
-                           midpoint = 0.40, label = label_percent()) +
+                           midpoint = 0.40) +
       coord_equal() +
       labs(x = "Topic", y = "Publication Year", fill = "P(Document | Topic)") +
       theme(panel.grid = element_blank(), legend.position = "right")
   }
+
