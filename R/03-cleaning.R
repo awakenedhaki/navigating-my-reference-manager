@@ -1,7 +1,5 @@
 # ==============================================================================
-# Cleaning: Removing "Low-Quality" Abstracts
-# 
-# . Flagging abstracts with unusual lengths (i.e. too long or short)
+# Cleaning
 # ==============================================================================
 
 # Loading Packages ============================================================= 
@@ -9,91 +7,111 @@ library(here)
 library(glue)
 library(scales)
 library(feather)
+library(tidytext)
 library(tidyverse)
 
-# Changing ggplot2 Defaults ====================================================
-update_geom_defaults("bar", list(color = "black", fill = "salmon"))
-update_geom_defaults("boxplot", list(fill = c("skyblue", "salmon")))
-theme_set(theme_minimal())
-
 # Constants ====================================================================
-ACTIVE_DATA <- here("data", "active")
-OUTDIR <- here(ACTIVE_DATA, "clean")
-LOWER_THRESHOLD <- 50
-UPPER_THRESHOLD <- 825
-
-THRESHOLDS <- glue("lower-{LOWER_THRESHOLD}_upper-{UPPER_THRESHOLD}")
+DATA <- here("data")
+PREPROCESSED <- here(DATA, "preprocessed")
+CLEANED <- here(DATA, "cleaned")
 
 # Loading Data =================================================================
-metadata <- read_feather(here(ACTIVE_DATA, "metadata.feather")) %>%
-  mutate(reference_manager = str_to_title(reference_manager),
-         journal = str_to_title(journal))
-abstracts <- read_feather(here(ACTIVE_DATA, "abstracts.feather"))
-normalized_tokens <- read_feather(here(ACTIVE_DATA, "normalized_tokens.feather"))
+normalized_tokens <- read_feather(here(PREPROCESSED, "normalized_tokens.feather"))
 
-# Counting Words in Abstracts ==================================================
-abstracts_to_clean <- abstracts %>%
-  mutate(n_words = str_count(abstract, pattern = "\\w+")) %>%
-  right_join(metadata, by = "id") %>%
-  select(id, n_words, abstract, publication_year, journal, reference_manager)
+# Helper Functions =============================================================
+filter_by_lemma_length <- function(tbl, length) {
+  tbl %>%
+    mutate(token_length = nchar(lemma)) %>%
+    filter(token_length > length) %>%
+    select(-token_length)
+}
 
-# Visualizations
-abstracts_to_clean %>%
-  arrange(n_words) %>%
-  select(reference_manager, n_words, abstract, journal)
+regex_extract <- function(tbl, pattern) {
+  tbl %>%
+    mutate(lemma = ifelse(str_detect(lemma, pattern),
+                          str_extract(lemma, pattern),
+                          lemma))
+}
 
-abstracts_to_clean %>%
-  arrange(desc(n_words)) %>%
-  select(reference_manager, n_words, journal)
+regex_split_longer <- function(tbl, pattern) {
+  tbl %>%
+    mutate(lemma = ifelse(str_detect(lemma, pattern),
+                          str_split(lemma, pattern),
+                          lemma)) %>%
+    unnest(cols = lemma) 
+}
 
-# . Number of Words Distribution
-abstracts_to_clean %>%
-  ggplot(aes(x = n_words)) +
-    geom_histogram(binwidth = 25) +
-    scale_x_continuous(labels = label_comma(), breaks = seq(0, 1000, 100)) +
-    labs(x = "Number of Words within Abstracts", y = "Occurrence")
+regex_remove <- function(tbl, pattern) {
+  tbl %>%
+    mutate(lemma = ifelse(str_detect(lemma, pattern),
+                          str_remove(lemma, pattern),
+                          lemma))
+}
 
-# . Number of Words Distribution by Reference Manager
-abstracts_to_clean %>%
-  ggplot(aes(x = reference_manager, y = n_words)) +
-    geom_boxplot() +
-    scale_y_continuous(labels = label_comma(), breaks = seq(0, 1000, 100)) +
-    labs(x = "Reference Manager", y = "Number of Words within Abstracts") +
-    coord_flip()
+regex_replace <- function(tbl, pattern, replace) {
+  tbl %>%
+    mutate(lemma = ifelse(str_detect(lemma, pattern),
+                          gsub(pattern = pattern, replacement = replace, x = lemma),
+                          lemma))
+}
 
-# . Number of Words Distribution by Publishing Journal
-abstracts_to_clean %>%
-  mutate(journal = fct_lump(journal, n = 19, w = n_words)) %>% 
-  mutate(n = n(), journal = glue("{journal} (n = {n})"), .by = "journal") %>%
-  mutate(journal = fct_reorder(journal, n)) %>%
-  ggplot(aes(x = reference_manager, y = n_words, fill = journal)) +
-    geom_boxplot() +
-    facet_wrap(~journal) +
-    scale_y_continuous(labels = label_comma()) +
-    labs(x = "Publishing Journal", y = "Number of Words within Abstracts") +
-    coord_flip() +
-    theme(legend.position = "none", 
-          panel.border = element_rect(color = "black", fill = NA))
+# Cleaning =====================================================================
+tokens <- normalized_tokens %>%
+  select(id = doc_id, sentence_id, lemma, pos, is_stop, like_email, like_url) %>%
+  anti_join(stop_words, by = c("lemma" = "word")) %>%
+  filter(!like_email, !like_url) %>%
+  select(-c(is_stop, like_email, like_url))
 
-# . Number of Words Distribution in Review Articles by Reference Managers
-abstracts_to_clean %>%
-  filter(str_detect(journal, "Review")) %>%
-  ggplot(aes(x = reference_manager, y = n_words)) +
-    geom_boxplot() +
-    labs(x = "Reference Manager", y = "Number of Words within Abstracts") +
-    coord_flip()
+verbs <- tokens %>%
+  filter(pos == "VERB")
 
-# . Bottom 10 Journals by Median Words
-abstracts_to_clean %>%
-  mutate(median_words = median(n_words), .by = "journal") %>%
-  distinct(journal, median_words) %>%
-  arrange(median_words)
+filtered_tokens <- tokens %>%
+  filter(!(pos %in% c("X", "PRON", "DET", "SYM", "NUM", "ADV", 
+                      "SCONJ", "SPACE", "INTJ", "ADP", "PART", 
+                      "CCONJ", "PUNCT", "AUX", "VERB"))) %>%
+  filter_by_lemma_length(length = 2)  %>%
+  mutate(lemma = str_to_lower(lemma)) %>%
+  # Splitting by delimiters
+  regex_split_longer(pattern = "-/-(?:;)?") %>%
+  regex_split_longer(pattern = "/") %>% 
+  regex_split_longer(pattern = ";") %>% 
+  regex_split_longer(pattern = "\\+|high|bright|dim") %>%
+  regex_split_longer(pattern = "\\.") %>%
+  # Extracting gene and proteins names
+  regex_extract(pattern = "cd\\d+") %>%
+  regex_replace(pattern = "(\\w+)-(\\d+)", replace = "\\1\\2") %>%
+  regex_replace(pattern = "(?:\\()?(\\w+)(?:\\))?(?:-)?(\\d+)", replace = "\\1\\2") %>%
+  regex_extract(pattern = "tgf") %>%
+  regex_extract(pattern = "p53") %>%
+  regex_extract(pattern = "yap") %>%
+  regex_extract(pattern = "fap") %>%
+  regex_extract(pattern = "^egfr|^ras|^raf|^mek") %>%
+  regex_split_longer(pattern = "-|‐|–") %>% 
+  # Standardizing nomenclature
+  regex_extract(pattern = "lgs|hgs|sbt") %>%
+  regex_extract(pattern = "stroma") %>%
+  regex_replace(pattern = "(?:.*)?(sb)o(t)(?:.*)?", replace = "\\1\\2") %>%
+  regex_replace(pattern = "^(?:o)?(ccc)$", replace = "\\1") %>%
+  regex_replace(pattern = "(\\w+)(?:\\d+,)*", "\\1") %>%
+  regex_replace(pattern = "(tumo)(?:u)?(.*)", replace = "\\1u\\2") %>%
+  regex_replace(pattern = "^(\\d{1,2}[pq])(?:\\d+)?(?:.*)?", "chromosome") %>%
+  # Removing undesired strings
+  regex_remove(pattern = "[:punct:]") %>%
+  regex_remove(pattern = "[\\(\\)]") %>%
+  regex_remove(pattern = "[\\{\\}\\$\\]]") %>%
+  regex_remove(pattern = "g12c|g12v|g12d|v600e|v599e") %>%
+  regex_remove(pattern = "background|result|aacr|acknowledgement|macmillan") %>%
+  regex_remove(pattern = "john|sons|wiley|ltd|society|pathological|ireland") %>%
+  regex_remove(pattern = "online|supplementary|motivation|limited|oxford") %>%
+  regex_remove(pattern = "university|copyright|publishers|center|usa|press") %>%
+  regex_remove(pattern = "american|association|email|abstract|suppl") %>%
+  filter(!str_detect(lemma, "^\\d+$")) %>%
+  filter(!str_detect(lemma, "^(ci|p|pequals|nequals|hr|fdr)[=<>;,]")) %>%
+  # Redoing initial filters
+  filter_by_lemma_length(length = 2) %>%
+  anti_join(stop_words, by = c("lemma" = "word")) %>%
+  select(id, term = lemma)
 
-# Removing Abstracts ===========================================================
-cleaned_abstracts <- normalized_tokens %>%
-  filter(id %in% (abstracts_to_clean %>%
-           filter(LOWER_THRESHOLD <= n_words, n_words <= UPPER_THRESHOLD) %>%
-           pull(id)))
-
-write_feather(cleaned_abstracts, 
-              here(OUTDIR, glue("cleaned_abstracts_{THRESHOLDS}.feather")))
+# Saving Cleaned Data ==========================================================
+write_feather(verbs, here(CLEANED, "verbs.feather"))
+write_feather(filtered_tokens, here(CLEANED, "cleaned_tokens.feather"))

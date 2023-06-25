@@ -15,7 +15,7 @@ library(tidyverse)
 
 # Setting Constants ============================================================
 RAW_DATA <- here("data", "raw")
-ACTIVE_DATA <- here("data", "active")
+DATA <- here("data")
 
 # Loading Data Sets ============================================================
 papers <- read_csv(here(RAW_DATA, "papers.csv")) %>%

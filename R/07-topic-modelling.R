@@ -20,10 +20,7 @@ theme_update(legend.position = "none",
              panel.border = element_rect(color = "black", fill = NA))
 
 # Constants ====================================================================
-ACTIVE_DATA <- here("data", "active")
-DTM_PATH <- here(ACTIVE_DATA, 
-                 "feature_engineering", 
-                 "tf_idf_matrix_long_3_2_0-05.feather")
+DATA <- here("data")
 
 ETA <- 0.75
 ALPHA <- 0.01
@@ -31,15 +28,15 @@ N_TOPICS <- 9
 ITERATIONS <- 500
 
 # Loading Data =================================================================
-metadata <- read_feather(here(ACTIVE_DATA, "metadata.feather"))
+metadata <- read_feather(here(DATA, "metadata.feather"))
 
-dtm <- read_feather(DTM_PATH) %>%
+dtm <- read_feather(here(DATA, "counts.feather")) %>%
   cast_sparse(id, term, n)
 
 # LDA ==========================================================================
 set.seed(123)
-topics <- tidylda(dtm, k = N_TOPICS, 
-                  iterations = ITERATIONS, 
+topics <- tidylda(dtm, k = N_TOPICS,
+                  iterations = ITERATIONS,
                   alpha = ALPHA,
                   eta = ETA)
 
