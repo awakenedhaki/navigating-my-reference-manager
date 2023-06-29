@@ -75,8 +75,8 @@ filtered_tokens <- tokens %>%
   regex_split_longer(pattern = "-/-(?:;)?") %>%
   regex_split_longer(pattern = "/") %>% 
   regex_split_longer(pattern = ";") %>% 
-  regex_split_longer(pattern = "\\+|high|bright|dim") %>%
-  regex_split_longer(pattern = "\\.") %>%
+  regex_split_longer(pattern = "\\+|high|bright|dim(?!en)") %>%
+  # regex_split_longer(pattern = "\\.") %>%
   # Extracting gene and proteins names
   regex_extract(pattern = "cd\\d+") %>%
   regex_replace(pattern = "(\\w+)-(\\d+)", replace = "\\1\\2") %>%
