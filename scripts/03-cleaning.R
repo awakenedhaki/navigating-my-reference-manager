@@ -4,8 +4,6 @@
 
 # Loading Packages ============================================================= 
 library(here)
-library(glue)
-library(scales)
 library(feather)
 library(tidytext)
 library(tidyverse)
