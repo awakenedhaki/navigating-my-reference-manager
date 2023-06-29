@@ -4,6 +4,7 @@
 
 # Loading Packages =============================================================
 library(here)
+library(udpipe)
 library(feather)
 library(tidytext)
 library(tidyverse)
@@ -28,7 +29,7 @@ extract_authors <- function(tbl) {
 
 extract_keywords <- function(tbl, group = NULL, n_keywords = 10) {
   tbl %>%
-    count({{ group }}, term, wt = tf_idf) %>%
+    count({{ group }}, term, wt = n) %>%
     distinct(across({{ group }}), term, n) %>%
     slice_max(order_by = n, n = n_keywords, by = {{ group }}) %>%
     mutate(term = reorder_within(term, by = n, within = {{ group }},
@@ -59,7 +60,7 @@ keyword_barplot <- function(tbl) {
   ggplot(data = tbl, aes(x = term, y = n)) +
     geom_col() +
     scale_x_reordered() +
-    labs(x = "Keyword", y = "Aggregated TF-IDF") +
+    labs(x = "Keyword", y = "Aggregated Counts") +
     coord_flip()
 }
 
@@ -68,7 +69,7 @@ metadata <- read_feather(here(DATA, "metadata.feather")) %>%
   select(id, journal, publication_year, author, reference_manager)
 
 counts <- read_feather(here(DATA, "counts.feather")) %>%
-  select(id, term, tf_idf) %>%
+  select(id, term, n, tf_idf) %>%
   left_join(metadata, by = "id")
 
 # Keyword Analysis =============================================================
@@ -100,3 +101,4 @@ counts %>%
   extract_keywords(publication_year) %>%
   keyword_barplot() +
     facet_wrap(~publication_year, scales = "free_y")
+
