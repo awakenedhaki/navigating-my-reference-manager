@@ -94,6 +94,7 @@ filtered_tokens <- tokens %>%
   regex_replace(pattern = "(tumo)(?:u)?(.*)", replace = "\\1u\\2") %>%
   regex_replace(pattern = "^(\\d{1,2}[pq])(?:\\d+)?(?:.*)?", "chromosome") %>%
   # Removing undesired strings
+  regex_remove(pattern = ">1<") %>%
   regex_remove(pattern = "[:punct:]") %>%
   regex_remove(pattern = "[\\(\\)]") %>%
   regex_remove(pattern = "[\\{\\}\\$\\]]") %>%
@@ -104,7 +105,7 @@ filtered_tokens <- tokens %>%
   regex_remove(pattern = "university|copyright|publishers|center|usa|press") %>%
   regex_remove(pattern = "american|association|email|abstract|suppl") %>%
   filter(!str_detect(lemma, "^\\d+$")) %>%
-  filter(!str_detect(lemma, "^(ci|p|pequals|nequals|hr|fdr)[=<>;,]")) %>%
+  filter(!str_detect(lemma, "^(ci|p|pequals|nequals|hr|fdr|χ2)[=<>;,]")) %>%
   # Redoing initial filters
   filter_by_lemma_length(length = 2) %>%
   anti_join(stop_words, by = c("lemma" = "word")) %>%
