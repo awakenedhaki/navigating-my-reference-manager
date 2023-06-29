@@ -5,11 +5,9 @@
 # Loading Packages =============================================================
 library(here)
 library(widyr)
-library(broom)
 library(ggraph)
 library(igraph)
 library(feather)
-library(showtext)
 library(tidytext)
 library(tidyverse)
 
