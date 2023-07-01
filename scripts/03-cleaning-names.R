@@ -27,7 +27,7 @@ authors <- metadata %>%
             .funs = \(x) x <- str_remove_all(x, "\\.")) %>%
   mutate(author = str_remove(author, "^ "))
 
-# . Shift Names
+# Shift Names ==================================================================
 shifted_names <- which(nchar(authors$last_name) == 1)
 
 first_name <- authors[shifted_names, "middle_name"]
@@ -38,7 +38,7 @@ authors[shifted_names, "first_name"] <- first_name
 authors[shifted_names, "middle_name"] <- middle_name
 authors[shifted_names, "last_name"] <- last_name
 
-# . Middle to First
+# Middle to First ==============================================================
 swapped_given_names <- which(nchar(authors$first_name) == 1 & 
                                nchar(authors$middle_name) > 1)
 
@@ -48,36 +48,40 @@ middle_name <- authors[swapped_given_names, "first_name"]
 authors[swapped_given_names, "first_name"] <- first_name
 authors[swapped_given_names, "middle_name"] <- middle_name
 
-# . Manual Correction
-# . . Eric Z. Ma
-eric_z_ma <- which(authors$author == "Eric Z. Ma")
-authors[eric_z_ma, "first_name"] <- "Eric"
-authors[eric_z_ma, "last_name"] <- "Ma"
+# Fill NA First Name with Middle Name ==========================================
+missing_first_names <- which(is.na(authors$first_name) & !is.na(authors$middle_name))
 
-# . . John S Coon
-john_s_coon <- which(authors$author == "John S. Coon V")
-authors[john_s_coon, "first_name"] <- "John"
-authors[john_s_coon, "last_name"] <- "Coon"
+authors[missing_first_names, "first_name"] <- authors[missing_first_names, "middle_name"]
+authors[missing_first_names, "middle_name"] <- NA
 
-# . . Stephen S T Wong
-stephen_s_t_wong <- which(authors$last_name == "ST Wong")
-authors[stephen_s_t_wong, "last_name"] <- "Wong"
+# Removing Initials from First Names ===========================================
+authors <- authors %>%
+  mutate(first_name = ifelse(str_detect(first_name, "[A-Z ]\\w{2,}"),
+                             str_extract(first_name, "\\w{2,}"),
+                             first_name) )
 
-# . . Michael S. Waterman
-michael_s_waterman <- which(authors$author == "M.S Waterman")
-authors[michael_s_waterman, "first_name"] <- "Michael"
-authors[michael_s_waterman, "last_name"] <- "Waterman"
+# Manual Correction ============================================================
+set_name <- function(tbl, author_name, first_name, last_name) {
+  author_idx <- which(tbl$author == author_name)
+  tbl[author_idx, "first_name"] <- first_name
+  tbl[author_idx, "last_name"] <- last_name
+  
+  return(tbl)
+}
 
-# . . David R. Rowley
-david_r_rowley <- which(authors$author == "DR Rowley")
-authors[david_r_rowley, "first_name"] <- "David"
-authors[david_r_rowley, "last_name"] <- "Rowley"
+# . . Author Specific
+authors <- set_name(authors, "Eric Z. Ma",        "Eric",    "Ma")
+authors <- set_name(authors, "John S. Coon V",    "John",    "Coon")
+authors <- set_name(authors, "M.S Waterman",      "Michael", "Waterman")
+authors <- set_name(authors, "DR Rowley",         "David",   "Rowley")
+authors <- set_name(authors, "Stephen S.T. Wong", "Stephen", "Wong")
 
-# . . Document Specific Issue
+# . . Document Specific
 missing_last_name <- which(authors$id == "fbeece21-eb59-412a-b803-6595e25a2fc7")
 
 authors[missing_last_name, ] <- authors[missing_last_name, ] %>%
   fill(first_name, .direction = "down")
+
 authors <- authors %>%
   filter(!(id == "fbeece21-eb59-412a-b803-6595e25a2fc7" & is.na(last_name)))
 
@@ -88,12 +92,33 @@ last_name <- authors[shifted_names, ]$first_name
 authors[shifted_names, "first_name"] <- first_name
 authors[shifted_names, "last_name"] <- last_name
 
-# . Removing Initials from First Names
-authors <- authors %>%
-  mutate(first_name = ifelse(str_detect(first_name, "[A-Z ] \\w{2,}"),
-                             str_remove(first_name, "[A-Z ] "),
-                             first_name))
+# Imputing First Name from Initials and Neighbours =============================
+last_names <- authors %>%
+  filter(str_detect(first_name, "^[A-Z]$")) %>%
+  distinct() %>%
+  pull(last_name)
 
-# . Replacing First Name Initals
+select_last_names <- which(authors$last_name %in% last_names)
+
+# authors[select_last_names, "first_name"] <- 
+authors[select_last_names, "first_name"] <- authors %>%
+  filter(last_name %in% last_names) %>%
+  mutate(first_initial = str_sub(first_name, start = 1, end = 1)) %>%
+  group_by(last_name, first_initial) %>%
+  mutate(imputed_first_name = ifelse(nchar(first_name) == 1,
+                                     NA,
+                                     first_name)) %>%
+  fill(imputed_first_name, .direction = "downup") %>%
+  ungroup() %>%
+  mutate(first_name = ifelse(is.na(imputed_first_name),
+                             first_name,
+                             imputed_first_name)) %>%
+  pull(first_name)
+
+# Complete Author Names ========================================================
 authors %>%
-  filter(str_detect(first_name, "^[A-Z]$"))
+  mutate(name = glue("{first_name} {last_name}")) %>%
+  select(id, name) %>%
+  group_by(id) %>%
+  summarize(names = paste(name, collapse = ",")) %>%
+  write_feather(here(DATA, "cleaned", "author_names.feather"))
