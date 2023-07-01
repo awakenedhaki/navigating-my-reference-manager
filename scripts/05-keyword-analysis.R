@@ -25,57 +25,7 @@ metadata <- read_feather(here(DATA, "metadata.feather")) %>%
 counts <- read_feather(here(DATA, "counts.feather")) %>%
   select(id, term, n, tf_idf)
 
-# Keyword By Count =============================================================
-# . Helper Functions
-extract_authors <- function(tbl) {
-  tbl %>%
-    separate_longer_delim(cols = author, delim = ",") %>%
-    mutate(author = str_remove(author, "^ "))
-}
-
-extract_keywords <- function(tbl, group = NULL, n_keywords = 10) {
-  tbl %>%
-    count({{ group }}, term, wt = n) %>%
-    distinct(across({{ group }}), term, n) %>%
-    slice_max(order_by = n, 
-              n = n_keywords, 
-              by = {{ group }},
-              with_ties = FALSE) %>%
-    mutate(term = reorder_within(str_to_upper(term), 
-                                 by = n, 
-                                 within = {{ group }},
-                                 sep = ifelse(is.null({{ group }}), "", "___")))
-}
-
-select_from <- function(tbl, group, from, n = 12, random = FALSE, seed = NULL) {
-  if (random) {
-    set.seed(seed)
-    selected_members <- from %>%
-      distinct() %>%
-      slice_sample(n = n) %>%
-      pull({{ group }})
-    
-  } else {
-    slicer <- partial(slice_max, order_by = group_count, n = n, with_ties = FALSE)
-    selected_members <- from %>%
-      count({{ group }}, name = "nn") %>%
-      slice_max(order_by = nn, n = n, with_ties = FALSE) %>%
-      pull({{ group }})
-  }
-  
-  tbl %>%
-    filter({{ group }} %in% selected_members)
-}
-
-keyword_barplot <- function(tbl) {
-  ggplot(data = tbl, aes(x = term, y = n)) +
-    geom_col() +
-    scale_x_reordered() +
-    labs(x = "Keyword", y = "Aggregated Counts") +
-    coord_flip()
-}
-
-# . Keyword Extraction
+# Keyword Extraction ===========================================================
 term_by_authors <- counts %>%
   left_join(metadata %>%
               select(id, author) %>%
