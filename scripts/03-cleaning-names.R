@@ -118,7 +118,5 @@ authors[select_last_names, "first_name"] <- authors %>%
 # Complete Author Names ========================================================
 authors %>%
   mutate(name = glue("{first_name} {last_name}")) %>%
-  select(id, name) %>%
-  group_by(id) %>%
-  summarize(names = paste(name, collapse = ",")) %>%
+  select(id, author = name) %>%
   write_feather(here(DATA, "cleaned", "author_names.feather"))
