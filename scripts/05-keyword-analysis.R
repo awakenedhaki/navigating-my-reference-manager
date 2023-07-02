@@ -30,7 +30,7 @@ counts <- read_feather(here(DATA, "features", "counts.feather")) %>%
   select(id, term, n, tf_idf)
 
 # Helper Functions =============================================================
-prevalence_weights <- function(position) {
+salience_weights <- function(position) {
   0.5 * exp(abs(position))
 }
 
@@ -43,32 +43,29 @@ min_max_scaler <- function(x) {
 
 # Keyword Extraction ===========================================================
 # . By Author ==================================================================
-prevalent_authors <- authors %>%
+author_salience <- authors %>%
   group_by(id) %>%
   mutate(author_order = row_number(),
-         median_centered_order = author_order - median(author_order),
-         weight = prevalence_weights(median_centered_order),
-         scaled_weight = min_max_scaler(weight)) %>%
-  ungroup() %>%
-  summarize(prevalence = sum(scaled_weight), .by = author) %>%
-  slice_max(order_by = prevalence, n = 16, with_ties = FALSE) %>%
-  pull(author)
+         median_centered_order = author_order - floor(median(author_order)),
+         weights = salience_weights(median_centered_order),
+         scaled_weights = min_max_scaler(weights)) %>%
+  ungroup() 
 
-author_tf_idf <- counts %>%
-  select(id, term) %>%
-  inner_join(authors[authors$n > MIN_AUTHOR_APPEARANCE, ], 
-             by = "id", relationship = "many-to-many") %>%
-  select(-c(id, n)) %>%
-  count(author, term) %>%
-  bind_tf_idf(term = term, document = author, n = n)
-
-author_tf_idf %>%
-  filter(author %in% prevalent_authors) %>%
-  slice_max(order_by = tf_idf, n = 10, by = author, with_ties = FALSE) %>%
-  mutate(term = reorder_within(str_to_upper(term), 
-                               by = tf_idf, 
-                               within = author)) %>%
-  ggplot(aes(x = tf_idf, y = term)) +
+counts %>%
+  left_join(author_salience[, c("id", "author", "scaled_weights")],
+            by = "id",
+            relationship = "many-to-many") %>%
+  mutate(tmp = n * scaled_weights) %>%
+  summarize(tmp1 = sum(tmp), .by = c(author, term)) %>%
+  bind_tf_idf(term, author, tmp1) %>%
+  mutate(tf_idf_tmp = tmp1 * log(idf)) %>%
+  filter(author %in% (author_salience %>%
+                        summarize(salience = sum(scaled_weights), .by = author) %>%
+                        slice_max(order_by = salience, n = 12, with_ties = FALSE) %>%
+                        pull(author))) %>%
+  slice_max(order_by = tf_idf_tmp, n = 10, by = author, with_ties = FALSE) %>%
+  mutate(term = reorder_within(str_to_upper(term), tf_idf_tmp, author)) %>%
+  ggplot(aes(x = tf_idf_tmp, y = term)) +
     geom_col() +
-    facet_wrap(~author, scales = "free_y", ncol = 4) +
+    facet_wrap(~author, scales = "free_y") +
     scale_y_reordered()
