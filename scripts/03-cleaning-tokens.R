@@ -74,7 +74,6 @@ filtered_tokens <- tokens %>%
   regex_split_longer(pattern = "/") %>% 
   regex_split_longer(pattern = ";") %>% 
   regex_split_longer(pattern = "\\+|high|bright|dim(?!en)") %>%
-  # regex_split_longer(pattern = "\\.") %>%
   # Extracting gene and proteins names
   regex_extract(pattern = "cd\\d+") %>%
   regex_replace(pattern = "(\\w+)-(\\d+)", replace = "\\1\\2") %>%
@@ -103,7 +102,7 @@ filtered_tokens <- tokens %>%
   regex_remove(pattern = "john|sons|wiley|ltd|society|pathological|ireland") %>%
   regex_remove(pattern = "online|supplementary|motivation|limited|oxford") %>%
   regex_remove(pattern = "university|copyright|publishers|center|usa|press") %>%
-  regex_remove(pattern = "american|association|email|abstract|suppl") %>%
+  regex_remove(pattern = "american|association|email|abstract|suppl|conclusion(?:s)?") %>%
   filter(!str_detect(lemma, "^\\d+$")) %>%
   filter(!str_detect(lemma, "^(ci|p|pequals|nequals|hr|fdr|χ2)[=<>;,]")) %>%
   # Redoing initial filters
