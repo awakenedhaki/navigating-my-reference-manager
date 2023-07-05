@@ -5,7 +5,6 @@
 # Loading Packages =============================================================
 library(here)
 library(udpipe)
-library(tidylo)
 library(feather)
 library(tidytext)
 library(tidyverse)
@@ -62,7 +61,7 @@ keywords_by_tf_idf <- counts %>%
 keywords_by_tf_idf %>%
   plot_keywords(metric = tf_idf)
 
-# . Author Importance
+# . Author Importance ==========================================================
 preprocessed_authors <- authors %>%
   add_count(author, name = "total_n_authors") %>%
   mutate(author_freq = total_n_authors / sum(total_n_authors),
@@ -70,7 +69,43 @@ preprocessed_authors <- authors %>%
          abs_centered_position = abs(author_position - floor(median(author_position))),
          .by = id)
 
-# . . Regularized Exponential Model of Importance
+# . Linear Model of Importance =================================================
+author_linear_weights <- preprocessed_authors %>%
+  mutate(linear_weight = 1 + abs_centered_position) %>%
+  mutate(normalized_weights = linear_weight / sum(linear_weight),
+         .by = id) %>%
+  mutate(normalized_weights = ifelse(normalized_weights == 0,
+                                     1e-2,
+                                     normalized_weights)) %>%
+  select(id, author, normalized_weights) %>%
+  right_join(counts, by = "id", relationship = "many-to-many") 
+
+# . . Applying author weights on raw term count
+linear_weighted_term_count <- author_linear_weights %>%
+  mutate(weighted_term_count = (n * normalized_weights)) %>%
+  group_by(author, term) %>%
+  summarize(weighted_count = sum(weighted_term_count)) %>%
+  ungroup() %>%
+  mutate(normalized_weighted_count = weighted_count / sum(weighted_count),
+         .by = author)
+
+linear_weighted_term_count %>%
+  plot_keywords(metric = normalized_weighted_count)
+  
+# . . Applying author and IDF weights on term frequency
+linear_weighted_term_freq <- author_linear_weights %>%
+  bind_tf_idf(term = term, document = id, n = n) %>%
+  mutate(weighted_term_count = tf_idf * normalized_weights) %>%
+  group_by(author, term) %>%
+  summarize(weighted_count = sum(weighted_term_count)) %>%
+  ungroup() %>%
+  mutate(normalized_weighted_count = weighted_count / sum(weighted_count),
+         .by = author)
+  
+linear_weighted_term_freq %>%
+  plot_keywords(metric = normalized_weighted_count)
+
+# . Regularized Exponential Model of Importance ================================
 regularized_exponential_author_weighter <- function(tbl) {
   tbl %>%
     mutate(unregularized_weights = exp(abs_centered_position),
@@ -100,7 +135,7 @@ exp_weighted_term_count %>%
 # . . Applying author and IDF weights on term frequency
 exp_weighted_term_freq <- author_exponential_weights %>%
   bind_tf_idf(term = term, document = id, n = n) %>%
-  mutate(weighted_term_count = (tf * idf) * normalized_weights) %>%
+  mutate(weighted_term_count = tf_idf * normalized_weights) %>%
   group_by(author, term) %>%
   summarize(weighted_count = sum(weighted_term_count)) %>%
   ungroup() %>%
@@ -110,7 +145,7 @@ exp_weighted_term_freq <- author_exponential_weights %>%
 exp_weighted_term_freq %>%
   plot_keywords(metric = normalized_weighted_count)
 
-# . . Sigmoid Model for Author Importance
+# . Sigmoid Model for Author Importance ========================================
 sigmoid <- function(author_position, slope = 1, midpoint = 3) {
   1 / (1 + exp(-slope * (author_position - midpoint)))
 }
@@ -118,7 +153,7 @@ sigmoid <- function(author_position, slope = 1, midpoint = 3) {
 sigmoid_author_weighter <- function(tbl) {
   tbl %>%
     mutate(weight = sigmoid(author_position),
-           normalized_weight = weight / sum(weight),
+           normalized_weights = weight / sum(weight),
            .by = id) %>%
     select(id, author, weight, normalized_weights)
 }
@@ -141,14 +176,53 @@ sigmoid_weighted_term_count %>%
   plot_keywords(metric = normalized_weighted_count)
 
 # . . Applying author and IDF weights on term frequency
-sigmoid_weighted_term_freq <- author_exponential_weights %>%
+sigmoid_weighted_term_freq <- author_sigmoid_weights %>%
   bind_tf_idf(term = term, document = id, n = n) %>%
-  mutate(weighted_term_count = (tf * idf) * normalized_weights) %>%
+  mutate(weighted_term_count = tf_idf * normalized_weights) %>%
   group_by(author, term) %>%
   summarize(weighted_count = sum(weighted_term_count)) %>%
   ungroup() %>%
   mutate(normalized_weighted_count = weighted_count / sum(weighted_count),
          .by = author)
   
-exp_weighted_term_freq %>%
+sigmoid_weighted_term_freq %>%
+  plot_keywords(metric = normalized_weighted_count)
+
+# . Logarithmic Model for Author Importance ====================================
+logarithmic_author_weighter <- function(tbl) {
+  tbl %>%
+    mutate(weight = log(1 + author_position),
+           normalized_weights = weight / sum(weight),
+           .by = id) %>%
+    select(id, author, weight, normalized_weights)
+}
+
+author_logarithmic_weights <- preprocessed_authors %>%
+  logarithmic_author_weighter() %>%
+  select(id, author, normalized_weights) %>%
+  right_join(counts, by = "id", relationship = "many-to-many")
+  
+# . . Applying author weights on raw term count
+logarithmic_weighted_term_count <- author_logarithmic_weights %>%
+  mutate(weighted_term_count = (n * normalized_weights)) %>%
+  group_by(author, term) %>%
+  summarize(weighted_count = sum(weighted_term_count)) %>%
+  ungroup() %>%
+  mutate(normalized_weighted_count = weighted_count / sum(weighted_count),
+         .by = author)
+
+logarithmic_weighted_term_count %>%
+  plot_keywords(metric = normalized_weighted_count)
+
+# . . Applying author and IDF weights on term frequency
+logarithmic_weighted_term_freq <- author_logarithmic_weights %>%
+  bind_tf_idf(term = term, document = id, n = n) %>%
+  mutate(weighted_term_count = tf_idf * normalized_weights) %>%
+  group_by(author, term) %>%
+  summarize(weighted_count = sum(weighted_term_count)) %>%
+  ungroup() %>%
+  mutate(normalized_weighted_count = weighted_count / sum(weighted_count),
+         .by = author)
+  
+logarithmic_weighted_term_freq %>%
   plot_keywords(metric = normalized_weighted_count)
