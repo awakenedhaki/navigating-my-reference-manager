@@ -43,7 +43,7 @@ counts <- read_feather(here(DATA, "counts.feather")) %>%
 # . Correlation (Adjacency) Matrix
 similarity_matrix <-  counts %>%
   filter(total_n >= MIN_COUNT_ACROSS_CORPUS) %>%
-  pairwise_similarity(item = term, feature = id, value = tf)
+  pairwise_similarity(item = term, feature = id, value = tf_idf)
 
 similarity_graph <- similarity_matrix %>%
   slice_max(order_by = similarity, n = 1500) %>%
