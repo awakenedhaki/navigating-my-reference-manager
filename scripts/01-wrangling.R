@@ -33,9 +33,6 @@ mendeley <- bib2df(here(RAW_DATA, "/mendeley.bib")) %>%
   mutate(publication_year = as.numeric(publication_year), date_added = date(NA),
          pmcid = NA, reference_manager = "mendeley")
 
-papers
-mendeley
-
 # Bindings Both Data Sets ======================================================
 articles <- rbind(papers, mendeley) %>%
   mutate(missing_journal = is.na(journal),
