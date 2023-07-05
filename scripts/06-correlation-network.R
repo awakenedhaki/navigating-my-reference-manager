@@ -19,7 +19,7 @@ theme_update(legend.position = "none",
              panel.border = element_rect(color = "black", fill = NA))
 
 # Constants ====================================================================
-DATA <- here("data")
+DATA <- here("data", "features")
 MIN_COUNT_ACROSS_CORPUS <- 15
 MIN_VERTICES <- 5
 
